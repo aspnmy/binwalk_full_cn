@@ -1,0 +1,28 @@
+networks:
+    binwalkv3_net:
+volumes:
+    binwalkv3_ssh:
+
+services:
+    binwalkv3:
+        container_name: binwalkv3_ssh
+        stdin_open: true
+        tty: true
+        volumes:
+            - binwalkv3_ssh:/analysis
+        entrypoint:
+            - /bin/bash
+        ports:
+            - "3622:622"
+        deploy:
+            resources:
+                limits:
+                    memory: 4g
+                    cpus: 2
+        image: ghcr.io/aspnmy/binwalk:ssh-base-v3.1.0
+        networks:
+            - binwalkv3_net
+
+
+        
+

@@ -1,0 +1,89 @@
+# 构建阶段
+FROM ghcr.io/aspnmy/binwalk:s6.ssh_base AS builder
+
+ARG BUILD_DIR="/tmp"
+ARG BINWALK_BUILD_DIR="${BUILD_DIR}/binwalk"
+ARG SASQUATCH_FILENAME="sasquatch_1.0.deb"
+
+# 安装构建依赖
+RUN apt-get update -y \
+    && apt-get upgrade -y \
+    && apt-get -y install --no-install-recommends \
+    ca-certificates \
+    tzdata \
+    python3 \
+    curl \
+    wget \
+    git \
+    clang \
+    build-essential \
+    zlib1g-dev \
+    liblz4-dev \
+    libsrecord-dev \
+    liblzma-dev \
+    liblzo2-dev \
+    libucl-dev \
+    libbz2-dev \
+    libssl-dev \
+    libfontconfig1-dev \
+    libpython3-dev \
+    && dpkg -i ${BUILD_DIR}/${SASQUATCH_FILENAME} \
+    && rm ${BUILD_DIR}/${SASQUATCH_FILENAME} \
+    && CC=clang uv pip install --no-cache-dir uefi_firmware jefferson ubi-reader git+https://github.com/marin-m/vmlinux-to-elf \
+    && uv cache clean
+
+# 运行时阶段
+FROM ghcr.io/aspnmy/binwalk:s6.ssh_base
+
+ARG DEFAULT_WORKING_DIR="/analysis"
+
+# 安装运行时依赖，移除开发库
+RUN apt-get update -y \
+    && apt-get upgrade -y \
+    && apt-get -y install --no-install-recommends \
+    ca-certificates \
+    tzdata \
+    python3 \
+    7zip \
+    zstd \
+    srecord \
+    tar \
+    unzip \
+    sleuthkit \
+    cabextract \
+    lz4 \
+    lzop \
+    unrar \
+    unyaffs \
+    zlib1g \
+    liblz4-1 \
+    libsrecord-dev \
+    liblzma-dev \
+    liblzo2-dev \
+    libucl-dev \
+    libbz2-dev \
+    libssl-dev \
+    7zip-standalone \
+    cpio \
+    device-tree-compiler \
+    && apt-get purge -y --auto-remove \
+    && rm -rf /var/cache/apt/archives /var/lib/apt/lists/* /bin/uv /bin/uvx /root/.cache \
+    && mkdir -p ${DEFAULT_WORKING_DIR} \
+    && chmod 777 ${DEFAULT_WORKING_DIR} \
+    && echo "bash +x /usr/sbin/sshd -D" >> "/init" \
+    && echo "chmod +x binwalk" >> "/init"
+
+# 从构建阶段复制Python包
+COPY --from=builder /usr/local/lib/python3*/dist-packages /usr/local/lib/python3*/dist-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+WORKDIR ${DEFAULT_WORKING_DIR}
+
+USER root
+
+# 启用此环境变量以移除 extractor 顶层符号链接，
+# 因为在 Docker 环境中的符号链接目标路径不会与主机相同。
+ENV BINWALK_RM_EXTRACTION_SYMLINK=1
+
+# 基础镜像包含ENTRYPOINT 相同ENTRYPOINT可以不做覆盖
+# ENTRYPOINT [ "/init" ]

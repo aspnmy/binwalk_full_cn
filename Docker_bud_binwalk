@@ -1,0 +1,69 @@
+## Scratch build stage
+FROM ubuntu:25.04 AS build
+ARG BUILD_DIR="/tmp"
+ARG BINWALK_BUILD_DIR="${BUILD_DIR}/binwalk"
+ARG SASQUATCH_FILENAME="sasquatch_1.0.deb"
+ARG SASQUATCH_BASE_FILE_URL="https://github.com/onekey-sec/sasquatch/releases/download/sasquatch-v4.5.1-5/"
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Etc/UTC
+
+COPY . ${BINWALK_BUILD_DIR}
+WORKDIR ${BINWALK_BUILD_DIR}
+
+# Pull build needs, build dumpifs, lzfse, dmg2img, vfdecrypt, and binwalk
+# Cleaning up our mess here doesn't matter, as anything generated in
+# this stage won't make it into the final image unless it's explicitly copied
+RUN apt-get update -y \
+    && apt-get upgrade -y \
+    && apt-get -y --no-install-recommends install \
+    ca-certificates \
+    tzdata \
+    curl \
+    git \
+    wget \
+    build-essential \
+    clang \
+    zlib1g \
+    zlib1g-dev \
+    liblz4-1 \
+    libsrecord-dev \
+    liblzma-dev \
+    liblzo2-dev \
+    libucl-dev \
+    liblz4-dev \
+    libbz2-dev \
+    libssl-dev \
+    pkg-config \
+    && curl -L -o "${SASQUATCH_FILENAME}" "${SASQUATCH_BASE_FILE_URL}\sasquatch_1.0_$(dpkg --print-architecture).deb" \
+    && git clone https://github.com/askac/dumpifs.git ${BUILD_DIR}/dumpifs \
+    && git clone https://github.com/lzfse/lzfse.git ${BUILD_DIR}/lzfse \
+    && git clone https://github.com/Lekensteyn/dmg2img.git ${BUILD_DIR}/dmg2img \
+    && rm ${BUILD_DIR}/dumpifs/dumpifs \
+    && make -C ${BUILD_DIR}/dumpifs dumpifs \
+    && make -C ${BUILD_DIR}/lzfse install \
+    && make -C ${BUILD_DIR}/dmg2img dmg2img vfdecrypt HAVE_LZFSE=1 \
+    && curl https://sh.rustup.rs -sSf | sh -s -- -y \
+    && . /root/.cargo/env \
+    && cargo build --release
+
+FROM docker.io/aspnmy/debian-ssh:stable_2025092318-s6-overlay_v3210_stable-20250908-slim_BestHostsMonitor AS sshbuild
+
+
+ARG BUILD_DIR="/tmp"
+ARG BINWALK_BUILD_DIR="${BUILD_DIR}/binwalk"
+ARG DEFAULT_WORKING_DIR="/analysis"
+ARG SASQUATCH_FILENAME="sasquatch_1.0.deb"
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Etc/UTC
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+ENV UV_SYSTEM_PYTHON=1 UV_BREAK_SYSTEM_PACKAGES=1
+
+WORKDIR ${BUILD_DIR}
+
+# 从 scratch build 阶段复制构建产物
+COPY --from=build ${BINWALK_BUILD_DIR}/${SASQUATCH_FILENAME} ${BUILD_DIR}/${SASQUATCH_FILENAME}
+COPY --from=build /usr/local/bin/lzfse ${BUILD_DIR}/dumpifs/dumpifs ${BUILD_DIR}/dmg2img/dmg2img ${BUILD_DIR}/dmg2img/vfdecrypt ${BINWALK_BUILD_DIR}/target/release/binwalk /usr/local/bin/
+
