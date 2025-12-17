@@ -1,0 +1,2 @@
+# binwalk_full_cn
+binwalk_docker_lite binwalk_devWebUI版本的核心后端，体积比官方docker更小巧，基于kali制作的镜像，包含了主流的逆向工具
