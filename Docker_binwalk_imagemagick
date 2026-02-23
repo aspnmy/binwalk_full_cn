@@ -1,0 +1,40 @@
+FROM ghcr.io/aspnmy/binwalk:s6.ssh_base
+
+ARG DEFAULT_WORKING_DIR="/analysis"
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Etc/UTC
+
+# 安装用户要求的工具和依赖
+RUN apt-get update -y \
+    && apt-get upgrade -y \
+    && apt-get -y install --no-install-recommends \
+    # 基础工具
+    ca-certificates \
+    tzdata \
+    python3 \
+    python3-pip \
+    # 用户要求的工具
+    imagemagick \
+    foremost \
+    hexedit \
+    gimp \
+    binutils \
+    mtd-utils \
+    # 清理
+    && apt-get purge -y --auto-remove \
+    && rm -rf /var/cache/apt/archives /var/lib/apt/lists/* /root/.cache \
+    # 创建工作目录
+    && mkdir -p ${DEFAULT_WORKING_DIR} \
+    && chmod 777 ${DEFAULT_WORKING_DIR}
+
+WORKDIR ${DEFAULT_WORKING_DIR}
+
+USER root
+
+# 启用此环境变量以移除 extractor 顶层符号链接，
+# 因为在 Docker 环境中的符号链接目标路径不会与主机相同。
+ENV BINWALK_RM_EXTRACTION_SYMLINK=1
+
+# 基础镜像包含ENTRYPOINT 相同ENTRYPOINT可以不做覆盖
+# ENTRYPOINT [ "/init" ]

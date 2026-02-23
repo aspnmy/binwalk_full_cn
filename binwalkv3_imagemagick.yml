@@ -1,0 +1,28 @@
+networks:
+    binwalkv3_imagemagick_net:
+volumes:
+    binwalkv3_ssh_imagemagick:
+
+services:
+    binwalkv3:
+        container_name: binwalkv3_ssh_imagemagick
+        stdin_open: true
+        tty: true
+        volumes:
+            - binwalkv3_ssh_imagemagick:/analysis
+        entrypoint:
+            - /bin/bash
+        ports:
+            - "3662:622"
+        deploy:
+            resources:
+                limits:
+                    memory: 4g
+                    cpus: 2
+        image: ghcr.io/aspnmy/binwalk:v3.1.0_s6.ssh_imagemagick
+        networks:
+            - binwalkv3_imagemagick_net
+
+
+        
+
