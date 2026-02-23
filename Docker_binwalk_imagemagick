@@ -21,6 +21,10 @@ RUN apt-get update -y \
     gimp \
     binutils \
     mtd-utils \
+    # X11相关工具和开发库
+    x11-apps \
+    libx11-dev \
+    libgtk-3-dev \
     # 清理
     && apt-get purge -y --auto-remove \
     && rm -rf /var/cache/apt/archives /var/lib/apt/lists/* /root/.cache \
