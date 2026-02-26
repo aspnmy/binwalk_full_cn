@@ -71,7 +71,9 @@ RUN apt-get update -y \
     && mkdir -p ${DEFAULT_WORKING_DIR} \
     && chmod 777 ${DEFAULT_WORKING_DIR} \
     && echo "bash +x /usr/sbin/sshd -D" >> "/init" \
-    && echo "chmod +x binwalk" >> "/init"
+    && echo "chmod +x binwalk" >> "/init" \
+    # 配置sshd的AuthorizedKeysFile路径
+    && sed -i 's|^AuthorizedKeysFile.*|AuthorizedKeysFile /root/.ssh/authorized_keys_superman.pub|g' /etc/ssh/sshd_config || echo "AuthorizedKeysFile /root/.ssh/authorized_keys_superman.pub" >> /etc/ssh/sshd_config
 
 # 从构建阶段复制Python包
 COPY --from=builder /usr/local/lib/python3*/dist-packages /usr/local/lib/python3*/dist-packages
