@@ -1,28 +1,29 @@
+version: '3.8'  # 指定 Compose 版本（兼容主流 Docker 版本）
+
 networks:
-    binwalkv3_imagemagick_net:
-volumes:
-    binwalkv3_ssh_imagemagick:
+  binwalkv3_imagemagick_net:
+    driver: bridge  # 显式指定桥接网络（默认）
+
 
 services:
-    binwalkv3:
-        container_name: binwalkv3_ssh_imagemagick
-        stdin_open: true
-        tty: true
-        volumes:
-            - binwalkv3_ssh_imagemagick:/analysis
-        entrypoint:
-            - /bin/bash
-        ports:
-            - "3662:622"
-        deploy:
-            resources:
-                limits:
-                    memory: 4g
-                    cpus: 2
-        image: ghcr.io/aspnmy/binwalk:v3.1.0_s6.ssh_imagemagick
-        networks:
-            - binwalkv3_imagemagick_net
-
-
-        
-
+  binwalkv3_ssh_imagemagick:
+    container_name: binwalkv3_ssh_imagemagick
+    stdin_open: true  # 保持标准输入打开（-i 参数）
+    tty: true         # 分配伪终端（-t 参数）
+    volumes:
+      - ${binwalkv3_ssh_imagemagick}:/analysis  # 修正卷挂载语法（去掉花括号）
+      # 可选：挂载宿主机本地目录到容器（方便传 bin 文件），比如：
+      # - /宿主机/本地/bin文件目录:/analysis/rom/Fushi
+    entrypoint: ["/bin/bash"]  # 容器启动后进入 bash
+    ports:
+      - "3662:22"  # 修正端口映射：宿主机 3662 → 容器 22（SSH 标准端口）
+                    # 原 622 大概率是笔误，容器内 SSH 默认端口是 22
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+          cpus: "2"  # 补全引号，避免语法警告
+    image: ghcr.io/aspnmy/binwalk:v3.1.0_s6.ssh_imagemagick
+    networks:
+      - binwalkv3_imagemagick_net
+    restart: unless-stopped  # 可选：容器异常退出时重启（增强稳定性）

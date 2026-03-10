@@ -51,6 +51,7 @@ RUN apt-get update -y \
     hexedit \
     binutils \
     mtd-utils \
+    ent \
     # 只安装必要的X11运行时库
     x11-apps \
     libx11-6 \
